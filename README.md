@@ -53,7 +53,7 @@ In model
 
 Tag.php
 ```php
-use bscheshirwork\fub\FileUploadBehavior;
+use bscheshirwork\fub\FileSaveBehavior;
 ...
     public function behaviors()
     {

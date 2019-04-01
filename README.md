@@ -201,66 +201,108 @@ use bscheshirwork\fub\FileSaveBehavior;
                     ],
                     'big' => [
                         'fileName' => [
-                            function ($extension) {
-                                /** @var FileSaveBehavior $behavior */
-                                $behavior = $this->getBehavior('fileSave');
-                                if ($fileId = $behavior->getFileId()) {
-                                    $filePath = Yii::getAlias($behavior->directory) . DIRECTORY_SEPARATOR . $behavior->type . DIRECTORY_SEPARATOR . $fileId . '_big.' . $extension;
-
-                                    return $filePath;
-                                }
-
-                                return false;
-                            },
+                            /** @see BlogArticle::fileNameForBehavior() */
+                            [$this, 'fileNameForBehavior'],
                             'extension' => 'jpg',
+                            'suffix' => 'big',
                         ],
                         'fileUrl' => [
-                            function ($extension, $version = 'default') {
-                                /** @var FileSaveBehavior $behavior */
-                                $behavior = $this->getBehavior('fileSave');
-                                if (($fileId = $behavior->getFileId()) && $behavior->getFilePath($version, true)) {
-                                    return Yii::getAlias($behavior->directoryUrl) . '/' . $behavior->type . '/' . $fileId . '_big.' . $extension;
-                                }
-
-                                return false;
-                            },
+                            /** @see BlogArticle::fileUrlForBehavior() */
+                            [$this, 'fileUrlForBehavior'],
                             'extension' => 'jpg',
+                            'suffix' => 'big',
                             'fileNameVersion' => 'big',
                         ],
                         'postProcessing' => [
-                            function ($oldFileName, $extension = 'jpg', $version = 'default') {
-                                /** @var FileSaveBehavior $behavior */
-                                $behavior = $this->getBehavior('fileSave');
-                                $fileId = $behavior->getFileId();
-                                if ($filePath = $behavior->getFilePath($version, false)) {
-                                    try {
-                                        FileHelper::unlink($filePath);
-                                    } catch (ErrorException $exception) {
-                                    }
-
-                                    $imaginary = 'http://imaginary:9000';
-                                    $originalImagePathForImagine = '/images/single' . DIRECTORY_SEPARATOR . $behavior->type . DIRECTORY_SEPARATOR . $fileId . '.' . $extension;
-                                    $width = 1110;
-                                    $height = 320;
-                                    $httpQuery = http_build_query([
-                                        'file' => $originalImagePathForImagine,
-                                        'width' => $width,
-                                        'height' => $height,
-                                    ]);
-
-                                    $url = $imaginary . '/crop?' . $httpQuery;
-
-                                    file_put_contents($filePath, file_get_contents($url));
-                                }
-                            },
+                            /** @see BlogArticle::fileUploadPostProcessing() */
+                            [$this, 'fileUploadPostProcessing'],
+                            'imaginary' => 'http://imaginary:9000',
+                            'imaginaryDir' => '/images/single',
+                            'width' => 1110,
+                            'height' => 320,
                             'extension' => 'jpg',
                             'fileNameVersion' => 'big',
+                        ],
+                    ],
+                    'small' => [
+                        'fileName' => [
+                            /** @see BlogArticle::fileNameForBehavior() */
+                            [$this, 'fileNameForBehavior'],
+                            'extension' => 'jpg',
+                            'suffix' => 'small',
+                        ],
+                        'fileUrl' => [
+                            /** @see BlogArticle::fileUrlForBehavior() */
+                            [$this, 'fileUrlForBehavior'],
+                            'extension' => 'jpg',
+                            'suffix' => 'small',
+                            'fileNameVersion' => 'small',
+                        ],
+                        'postProcessing' => [
+                            /** @see BlogArticle::fileUploadPostProcessing() */
+                            [$this, 'fileUploadPostProcessing'],
+                            'imaginary' => 'http://imaginary:9000',
+                            'imaginaryDir' => '/images/single',
+                            'width' => 350,
+                            'height' => 208,
+                            'extension' => 'jpg',
+                            'fileNameVersion' => 'small',
                         ],
                     ],
                 ],
             ],
         ];
     }
+    ...
+    
+    public function fileNameForBehavior($extension, $suffix)
+    {
+        /** @var FileSaveBehavior $behavior */
+        $behavior = $this->getBehavior('fileSave');
+        if ($fileId = $behavior->getFileId()) {
+            $filePath = Yii::getAlias($behavior->directory) . DIRECTORY_SEPARATOR . $behavior->type . DIRECTORY_SEPARATOR . $fileId . '_' . $suffix . '.' . $extension;
+
+            return $filePath;
+        }
+
+        return false;
+    }
+
+    public function fileUrlForBehavior($extension, $suffix, $version = 'default')
+    {
+        /** @var FileSaveBehavior $behavior */
+        $behavior = $this->getBehavior('fileSave');
+        if (($fileId = $behavior->getFileId()) && $behavior->getFilePath($version, true)) {
+            return Yii::getAlias($behavior->directoryUrl) . '/' . $behavior->type . '/' . $fileId . '_' . $suffix . '.' . $extension;
+        }
+
+        return false;
+    }
+
+    public function fileUploadPostProcessing($oldFileName, $imaginary, $imaginaryDir, $width, $height, $extension = 'jpg', $version = 'default')
+    {
+        /** @var FileSaveBehavior $behavior */
+        $behavior = $this->getBehavior('fileSave');
+        $fileId = $behavior->getFileId();
+        if ($filePath = $behavior->getFilePath($version, false)) {
+            try {
+                FileHelper::unlink($filePath);
+            } catch (ErrorException $exception) {
+            }
+
+            $originalImagePathForImagine = $imaginaryDir . DIRECTORY_SEPARATOR . $behavior->type . DIRECTORY_SEPARATOR . $fileId . '.' . $extension;
+            $httpQuery = http_build_query([
+                'file' => $originalImagePathForImagine,
+                'width' => $width,
+                'height' => $height,
+            ]);
+
+            $url = $imaginary . '/crop?' . $httpQuery;
+
+            file_put_contents($filePath, file_get_contents($url));
+        }
+    }
+
 ```
 
 

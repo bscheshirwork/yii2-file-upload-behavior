@@ -138,6 +138,34 @@ index.php
 
 ## Advanced usage
 
+In form
+
+BlogForm.php
+```php
+use bscheshirwork\fub\FileUploadBehavior;
+...
+    public function behaviors()
+    {
+        return [
+            'fileUpload' => [ // name is important
+                'class' => FileUploadBehavior::class,
+                'attribute' => 'image',
+                'mimeTypeFilter' => 'image/jpeg',
+                'tempDirectory' => '@storageWeb/images/temp',
+                'tempDirectoryUrl' => '@storageUrl/images/temp',
+            ],
+        ];
+    }
+    
+    public function form2Models(): ActiveRecordInterface
+    {
+        $this->getBehavior('fileUpload')->uploadFile();
+        $this->_model->getBehavior('fileSave')->uploader = $this->getBehavior('fileUpload');
+
+        return $this->_model;
+    }
+```
+
 In model
 
 Blog.php
@@ -157,12 +185,12 @@ use bscheshirwork\fub\FileSaveBehavior;
                         'fileName' => [
                             /** @see FileSaveBehavior::defaultFileName() */
                             [FileSaveBehavior::class, 'defaultFileName'],
-                            'extension' => 'svg',
+                            'extension' => 'jpg',
                         ],
                         'fileUrl' => [
                             /** @see FileSaveBehavior::defaultFileUrl() */
                             [FileSaveBehavior::class, 'defaultFileUrl'],
-                            'extension' => 'svg',
+                            'extension' => 'jpg',
                             'fileNameVersion' => 'default',
                         ],
                         'postProcessing' => [
@@ -184,7 +212,7 @@ use bscheshirwork\fub\FileSaveBehavior;
 
                                 return false;
                             },
-                            'extension' => 'svg',
+                            'extension' => 'jpg',
                         ],
                         'fileUrl' => [
                             function ($extension, $version = 'default') {
@@ -196,22 +224,36 @@ use bscheshirwork\fub\FileSaveBehavior;
 
                                 return false;
                             },
-                            'extension' => 'svg',
+                            'extension' => 'jpg',
                             'fileNameVersion' => 'big',
                         ],
                         'postProcessing' => [
-                            function ($oldFileName, $version = 'default') {
+                            function ($oldFileName, $extension = 'jpg', $version = 'default') {
                                 /** @var FileSaveBehavior $behavior */
                                 $behavior = $this->getBehavior('fileSave');
-                                $oldFileName = $behavior->getFilePath('default', false);
+                                $fileId = $behavior->getFileId();
                                 if ($filePath = $behavior->getFilePath($version, false)) {
                                     try {
                                         FileHelper::unlink($filePath);
                                     } catch (ErrorException $exception) {
                                     }
-                                    rename($oldFileName, $filePath);
+
+                                    $imaginary = 'http://imaginary:9000';
+                                    $originalImagePathForImagine = '/images/single' . DIRECTORY_SEPARATOR . $behavior->type . DIRECTORY_SEPARATOR . $fileId . '.' . $extension;
+                                    $width = 1110;
+                                    $height = 320;
+                                    $httpQuery = http_build_query([
+                                        'file' => $originalImagePathForImagine,
+                                        'width' => $width,
+                                        'height' => $height,
+                                    ]);
+
+                                    $url = $imaginary . '/crop?' . $httpQuery;
+
+                                    file_put_contents($filePath, file_get_contents($url));
                                 }
                             },
+                            'extension' => 'jpg',
                             'fileNameVersion' => 'big',
                         ],
                     ],

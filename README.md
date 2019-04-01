@@ -31,7 +31,7 @@ use bscheshirwork\fub\FileUploadBehavior;
     public function behaviors()
     {
         return [
-            'fileUpload' => [
+            'fileUpload' => [ // name is important
                 'class' => FileUploadBehavior::class,
                 'attribute' => 'image',
                 'tempDirectory' => '@storageWeb/images/temp',
@@ -63,7 +63,26 @@ use bscheshirwork\fub\FileSaveBehavior;
                 'directory' => '@storageWeb/images/single',
                 'directoryUrl' => '@storageUrl/images/single',
                 'type' => 'tag',
-                'extension' => 'svg',
+                'fileVersions' => [
+                    'default' => [
+                        'fileName' => [
+                            /** @see FileSaveBehavior::defaultFileName() */
+                            [FileSaveBehavior::class, 'defaultFileName'],
+                            'extension' => 'svg',
+                        ],
+                        'fileUrl' => [
+                            /** @see FileSaveBehavior::defaultFileUrl() */
+                            [FileSaveBehavior::class, 'defaultFileUrl'],
+                            'extension' => 'svg',
+                            'fileNameVersion' => 'default',
+                        ],
+                        'postProcessing' => [
+                            /** @see FileSaveBehavior::defaultAttachFileToModel() */
+                            [FileSaveBehavior::class, 'defaultAttachFileToModel'],
+                            'fileNameVersion' => 'default',
+                        ],
+                    ],
+                ],
             ],
         ];
     }
@@ -106,11 +125,6 @@ use bscheshirwork\fub\FileDeleteAction;
 
 Display image
 
-_form.php
-```php
-<img src="<?= $tag->fileUrl ?>">
-```
-
 index.php
 ```php
             [
@@ -120,3 +134,98 @@ index.php
                 },
             ],
 ```
+
+
+## Advanced usage
+
+In model
+
+Blog.php
+```php
+use bscheshirwork\fub\FileSaveBehavior;
+...
+    public function behaviors()
+    {
+        return [
+            'fileSave' => [ // name is important
+                'class' => FileSaveBehavior::class,
+                'directory' => '@storageWeb/images/single',
+                'directoryUrl' => '@storageUrl/images/single',
+                'type' => 'blog',
+                'fileVersions' => [
+                    'default' => [
+                        'fileName' => [
+                            /** @see FileSaveBehavior::defaultFileName() */
+                            [FileSaveBehavior::class, 'defaultFileName'],
+                            'extension' => 'svg',
+                        ],
+                        'fileUrl' => [
+                            /** @see FileSaveBehavior::defaultFileUrl() */
+                            [FileSaveBehavior::class, 'defaultFileUrl'],
+                            'extension' => 'svg',
+                            'fileNameVersion' => 'default',
+                        ],
+                        'postProcessing' => [
+                            /** @see FileSaveBehavior::defaultAttachFileToModel() */
+                            [FileSaveBehavior::class, 'defaultAttachFileToModel'],
+                            'fileNameVersion' => 'default',
+                        ],
+                    ],
+                    'big' => [
+                        'fileName' => [
+                            function ($extension) {
+                                /** @var FileSaveBehavior $behavior */
+                                $behavior = $this->getBehavior('fileSave');
+                                if ($fileId = $behavior->getFileId()) {
+                                    $filePath = Yii::getAlias($behavior->directory) . DIRECTORY_SEPARATOR . $behavior->type . DIRECTORY_SEPARATOR . $fileId . '_big.' . $extension;
+
+                                    return $filePath;
+                                }
+
+                                return false;
+                            },
+                            'extension' => 'svg',
+                        ],
+                        'fileUrl' => [
+                            function ($extension, $version = 'default') {
+                                /** @var FileSaveBehavior $behavior */
+                                $behavior = $this->getBehavior('fileSave');
+                                if (($fileId = $behavior->getFileId()) && $behavior->getFilePath($version, true)) {
+                                    return Yii::getAlias($behavior->directoryUrl) . '/' . $behavior->type . '/' . $fileId . '_big.' . $extension;
+                                }
+
+                                return false;
+                            },
+                            'extension' => 'svg',
+                            'fileNameVersion' => 'big',
+                        ],
+                        'postProcessing' => [
+                            function ($oldFileName, $version = 'default') {
+                                /** @var FileSaveBehavior $behavior */
+                                $behavior = $this->getBehavior('fileSave');
+                                $oldFileName = $behavior->getFilePath('default', false);
+                                if ($filePath = $behavior->getFilePath($version, false)) {
+                                    try {
+                                        FileHelper::unlink($filePath);
+                                    } catch (ErrorException $exception) {
+                                    }
+                                    rename($oldFileName, $filePath);
+                                }
+                            },
+                            'fileNameVersion' => 'big',
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
+```
+
+
+Display image
+
+_form.php
+```php
+    <img src="<?= $model->model->getBehavior('fileSave')->getFileUrl('big') ?>">
+```
+

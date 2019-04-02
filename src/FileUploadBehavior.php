@@ -28,7 +28,10 @@ class FileUploadBehavior extends Behavior
      */
     public $attribute = 'image';
     /**
-     * @var string filter by mime type. Set property to false for disabled filter
+     * @var string|string|bool filter by mime type(s). Set property to false to disabled filter.
+     * Examples:
+     * 'image/svg'
+     * ['image/jpeg', 'image/png']
      */
     public $mimeTypeFilter = 'image/svg';
     /**
@@ -128,7 +131,13 @@ class FileUploadBehavior extends Behavior
     public function uploadFile()
     {
         $imageFile = UploadedFile::getInstance($this->owner, $this->attribute);
-        if ($imageFile && $this->mimeTypeFilter && ($imageFile->type != $this->mimeTypeFilter) && (FileHelper::getMimeType($imageFile->tempName) != $this->mimeTypeFilter)) {
+        if (
+            $imageFile && $this->mimeTypeFilter &&
+            !(
+                in_array($imageFile->type, (array) $this->mimeTypeFilter) ||
+                in_array(FileHelper::getMimeType($imageFile->tempName), (array) $this->mimeTypeFilter)
+            )
+        ) {
             return;
         }
 

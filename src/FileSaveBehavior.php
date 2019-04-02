@@ -8,7 +8,6 @@ use yii\base\Behavior;
 use yii\base\ErrorException;
 use yii\base\InvalidConfigException;
 use yii\db\ActiveRecord;
-use yii\helpers\FileHelper;
 
 /**
  * Class FileSaveBehavior
@@ -224,7 +223,7 @@ class FileSaveBehavior extends Behavior
             } catch (ErrorException $exception) {
             }
             rename($oldFileName, $filePath);
-            $this->deleteEmptyDirectory($oldFileName);
+            FileHelper::deleteEmptyDirectory($oldFileName);
         }
     }
 
@@ -282,39 +281,5 @@ class FileSaveBehavior extends Behavior
                 call_user_func_array($function, $params);
             }
         }
-    }
-
-    /**
-     * @param $lastFileName string Cleaning after move file
-     */
-    protected function deleteEmptyDirectory($lastFileName)
-    {
-        try {
-            $directory = dirname(FileHelper::normalizePath($lastFileName));
-            if ($this->checkDirectoryIsEmpty($directory)) {
-                FileHelper::removeDirectory($directory);
-            }
-        } catch (ErrorException $exception) {
-        }
-    }
-
-    /**
-     * Check for empty dir
-     * @param $dir
-     * @return bool|null
-     */
-    protected function checkDirectoryIsEmpty($dir)
-    {
-        if (!is_readable($dir)) {
-            return null;
-        }
-        $handle = opendir($dir);
-        while (false !== ($entry = readdir($handle))) {
-            if ($entry != "." && $entry != "..") {
-                return false;
-            }
-        }
-
-        return true;
     }
 }

@@ -171,6 +171,7 @@ In model
 Blog.php
 ```php
 use bscheshirwork\fub\FileSaveBehavior;
+use bscheshirwork\fub\FileHelper;
 ...
     public function behaviors()
     {
@@ -194,8 +195,12 @@ use bscheshirwork\fub\FileSaveBehavior;
                             'fileNameVersion' => 'default',
                         ],
                         'postProcessing' => [
-                            /** @see FileSaveBehavior::defaultAttachFileToModel() */
-                            [FileSaveBehavior::class, 'defaultAttachFileToModel'],
+                            /** @see BlogArticle::fileUploadDefaultPostProcessing() */
+                            [$this, 'fileUploadDefaultPostProcessing'],
+                            'imaginary' => 'http://imaginary:9000',
+                            'imaginaryDir' => '/images/single',
+                            'format' => 'jpeg',
+                            'extension' => 'jpg',
                             'fileNameVersion' => 'default',
                         ],
                     ],
@@ -219,7 +224,7 @@ use bscheshirwork\fub\FileSaveBehavior;
                             'imaginary' => 'http://imaginary:9000',
                             'imaginaryDir' => '/images/single',
                             'width' => 1110,
-                            'height' => 320,
+                            'height' => 340,
                             'extension' => 'jpg',
                             'fileNameVersion' => 'big',
                         ],
@@ -277,6 +282,41 @@ use bscheshirwork\fub\FileSaveBehavior;
         }
 
         return false;
+    }
+
+    /**
+     * @param $oldFileName
+     * @param $imaginary
+     * @param $imaginaryDir
+     * @param string $format Specify the image format to output. Possible values are: jpeg, png, webp
+     * @param string $extension
+     * @param string $version
+     */
+    public function fileUploadDefaultPostProcessing($oldFileName, $imaginary, $imaginaryDir, $format = 'jpeg', $extension = 'jpg', $version = 'default')
+    {
+        /** @var FileSaveBehavior $behavior */
+        $behavior = $this->getBehavior('fileSave');
+        $fileId = $behavior->getFileId();
+        if ($filePath = $behavior->getFilePath($version, false)) {
+            try {
+                FileHelper::unlink($filePath);
+            } catch (ErrorException $exception) {
+            }
+            rename($oldFileName, $filePath);
+            FileHelper::deleteEmptyDirectory($oldFileName);
+
+
+            $originalImagePathForImagine = $imaginaryDir . DIRECTORY_SEPARATOR . $behavior->type . DIRECTORY_SEPARATOR . $fileId . '.' . $extension;
+            $httpQuery = http_build_query([
+                'file' => $originalImagePathForImagine,
+                'type' => $format,
+                'quality' => 100,
+            ]);
+
+            $url = $imaginary . '/convert?' . $httpQuery;
+
+            file_put_contents($filePath, file_get_contents($url));
+        }
     }
 
     public function fileUploadPostProcessing($oldFileName, $imaginary, $imaginaryDir, $width, $height, $extension = 'jpg', $version = 'default')

@@ -202,8 +202,14 @@ class FileSaveBehavior extends Behavior
      */
     public function defaultFileUrl($extension, $version = 'default')
     {
-        if (($fileId = $this->getFileId()) && $this->getFilePath($version, true)) {
-            return Yii::getAlias($this->directoryUrl) . '/' . $this->type . '/' . $fileId . '.' . $extension;
+        if (($fileId = $this->getFileId()) && ($filePath = $this->getFilePath($version, true))) {
+            try {
+                $time = filemtime($filePath);
+                $timeHash = '?_=' . crc32($time);
+            } catch (\Exception $exception) {
+            };
+
+            return Yii::getAlias($this->directoryUrl) . '/' . $this->type . '/' . $fileId . '.' . $extension . ($timeHash ?? '');
         }
 
         return false;
